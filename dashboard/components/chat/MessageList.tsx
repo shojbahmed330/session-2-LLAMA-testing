@@ -1,8 +1,9 @@
 
 import React, { useEffect, useRef } from 'react';
-import { Loader2, RefreshCw, Cpu, Brain, Code, FileText, Save, Terminal, Zap, Clock } from 'lucide-react';
+import { Loader2, RefreshCw, Cpu, Brain, Code, FileText, Save, Terminal, Zap, Clock, Layout, Palette, Type, Layers } from 'lucide-react';
 import MessageItem from './MessageItem';
 import { useLanguage } from '../../../i18n/LanguageContext';
+import { BuilderPhase } from '../../../types';
 
 interface MessageListProps {
   messages: any[];
@@ -10,9 +11,10 @@ interface MessageListProps {
   currentAction?: string | null;
   handleSend: (extraData?: string) => void;
   waitingForApproval?: boolean;
+  phase: BuilderPhase;
 }
 
-const MessageList: React.FC<MessageListProps> = ({ messages, isGenerating, currentAction, handleSend, waitingForApproval }) => {
+const MessageList: React.FC<MessageListProps> = ({ messages, isGenerating, currentAction, handleSend, waitingForApproval, phase }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { t } = useLanguage();
 
@@ -36,6 +38,13 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isGenerating, curre
     return <Cpu size={16} className="animate-spin text-pink-500" />;
   };
 
+  const buildSteps = [
+    { id: 'layout', label: 'Creating layout', icon: <Layout size={12} /> },
+    { id: 'pages', label: 'Adding pages', icon: <Layers size={12} /> },
+    { id: 'styling', label: 'Styling', icon: <Palette size={12} /> },
+    { id: 'sections', label: 'Adding sections', icon: <Type size={12} /> },
+  ];
+
   return (
     <div 
       ref={scrollRef}
@@ -49,6 +58,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isGenerating, curre
           handleSend={handleSend} 
           isLatest={idx === messages.length - 1}
           waitingForApproval={waitingForApproval}
+          phase={phase}
         />
       ))}
       
@@ -64,19 +74,40 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isGenerating, curre
                     {getActionIcon()}
                  </div>
                  <div className="flex flex-col flex-1">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-500/80">Core</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-500/80">
+                      {phase === BuilderPhase.BUILDING ? 'Building Site' : 'Core'}
+                    </span>
                     <span className="text-[11px] font-bold text-white mt-0.5 animate-pulse">
                        {currentAction || 'Processing...'}
                     </span>
                  </div>
               </div>
 
-              <div className="space-y-2 border-t border-white/5 pt-4">
-                 <div className="flex items-center gap-3">
-                    <div className="w-1 h-1 rounded-full bg-pink-500"></div>
-                    <span className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Injecting Neural Logic</span>
-                 </div>
-              </div>
+              {phase === BuilderPhase.BUILDING ? (
+                <div className="space-y-3 border-t border-white/5 pt-4">
+                  {buildSteps.map((step, i) => (
+                    <div key={step.id} className="flex items-center justify-between animate-in fade-in slide-in-from-left-2" style={{ animationDelay: `${i * 150}ms` }}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 rounded-md bg-white/5 flex items-center justify-center text-zinc-500">
+                          {step.icon}
+                        </div>
+                        <span className="text-[10px] font-bold text-zinc-400">{step.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
+                        <span className="text-[8px] font-black uppercase text-emerald-500/60 tracking-widest">Active</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2 border-t border-white/5 pt-4">
+                   <div className="flex items-center gap-3">
+                      <div className="w-1 h-1 rounded-full bg-pink-500"></div>
+                      <span className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Injecting Neural Logic</span>
+                   </div>
+                </div>
+              )}
            </div>
         </div>
       )}

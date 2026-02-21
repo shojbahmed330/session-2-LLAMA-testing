@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { User as UserType, ProjectConfig, Project, WorkspaceType, BuildStep, GithubConfig, ChatMessage, AIModel } from '../types';
+import { User as UserType, ProjectConfig, Project, WorkspaceType, BuildStep, GithubConfig, ChatMessage, AIModel, BuilderPhase } from '../types';
 import { GeminiService } from '../services/geminiService';
 import { DatabaseService } from '../services/dbService';
 import { GithubService } from '../services/githubService';
@@ -17,6 +17,7 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
   const [mobileTab, setMobileTab] = useState<'chat' | 'preview'>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
+  const [phase, setPhase] = useState<BuilderPhase>(BuilderPhase.EMPTY);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentAction, setCurrentAction] = useState<string | null>(null);
   const [executionQueue, setExecutionQueue] = useState<string[]>([]);
@@ -160,6 +161,11 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
     const promptText = (customPrompt || input).trim();
     if (!promptText && !selectedImage) return;
 
+    // Phase Transitions
+    if (phase === BuilderPhase.EMPTY && !isAuto) {
+      setPhase(BuilderPhase.PROMPT_SENT);
+    }
+
     const activeQueue = overrideQueue !== undefined ? overrideQueue : executionQueue;
     const currentModel = projectConfig.selected_model || 'gemini-3-flash-preview';
 
@@ -248,6 +254,15 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
 
       const res = JSON.parse(fullJsonString);
       if (res.thought) setLastThought(res.thought);
+
+      // Phase Logic based on AI response
+      if (!isAuto) {
+        if (res.questions && res.questions.length > 0) {
+          setPhase(BuilderPhase.QUESTIONING);
+        } else if (res.files && Object.keys(res.files).length > 0) {
+          setPhase(BuilderPhase.BUILDING);
+        }
+      }
       
       let updatedFiles = { ...projectFilesRef.current };
       if (res.files && Object.keys(res.files).length > 0) {
@@ -264,6 +279,11 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
             .then(() => refreshHistory())
             .catch(e => console.error("Snapshot failed:", e));
         }
+
+        // Transition to PREVIEW_READY after building
+        if (phase === BuilderPhase.BUILDING || phase === BuilderPhase.PROMPT_SENT) {
+           setPhase(BuilderPhase.PREVIEW_READY);
+        }
       }
 
       let nextPlan = res.plan || [];
@@ -273,21 +293,15 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
       }
 
       const isFirstTurn = currentMessages.length === 0;
-      const hasMoreSteps = !isFirstTurn && ((isAuto && activeQueue.length > 0) || (!isAuto && nextPlan.length > 1));
-      let isApproval = false;
       let finalAssistantResponse = res.answer;
 
-      if (hasMoreSteps) {
-        const nextStepName = isAuto ? activeQueue[0] : nextPlan[1];
-        finalAssistantResponse += `\n\n**Next Objective:** ${nextStepName}\nShall I proceed with implementation?`;
-        setWaitingForApproval(true);
-        isApproval = true;
-      }
+      // Filter out invalid questions
+      const validQuestions = (res.questions || []).filter((q: any) => q && q.text && q.options && q.options.length > 0);
 
       const finalAssistantMsg: ChatMessage = { 
         id: assistantId, role: 'assistant', content: finalAssistantResponse, 
-        plan: isAuto ? currentPlan : (res.plan || []), questions: res.questions,
-        isApproval, model: currentModel, files: res.files, thought: res.thought, timestamp: Date.now()
+        plan: isAuto ? currentPlan : (res.plan || []), questions: validQuestions,
+        isApproval: false, model: currentModel, files: res.files, thought: res.thought, timestamp: Date.now()
       };
 
       const finalMessages = [...currentMessages, finalAssistantMsg];
@@ -296,6 +310,19 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
       if (currentProjectId && user) {
         await db.updateProject(user.id, currentProjectId, updatedFiles, projectConfig);
         await db.supabase.from('projects').update({ messages: finalMessages }).eq('id', currentProjectId);
+      }
+
+      // Autonomous Execution: If there are more steps in the plan, trigger the next one automatically
+      const hasMoreSteps = (isAuto && activeQueue.length > 0) || (!isAuto && nextPlan.length > 1);
+      if (hasMoreSteps) {
+        const nextStepName = isAuto ? activeQueue[0] : nextPlan[1];
+        const newQueue = isAuto ? activeQueue.slice(1) : nextPlan.slice(2);
+        setExecutionQueue(newQueue);
+        
+        // Small delay to let the UI update and avoid hitting rate limits too fast
+        setTimeout(() => {
+          handleSend(`AUTONOMOUS EXECUTION: Proceeding with next step: ${nextStepName}`, true, newQueue);
+        }, 1500);
       }
     } catch (err: any) {
       if (err.name === 'AbortError') console.log("Generation aborted");
@@ -434,7 +461,7 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
     projectFiles, setProjectFiles, 
     projectConfig, setProjectConfig, selectedFile, setSelectedFile,
     openTabs, toasts, addToast, removeToast: (id: string) => setToasts(prev => prev.filter(t => t.id !== id)),
-    lastThought, currentPlan,
+    lastThought, currentPlan, phase, setPhase,
     buildStatus, setBuildStatus, buildSteps, isDownloading, selectedImage,
     setSelectedImage, handleImageSelect, history, isHistoryLoading, showHistory,
     setShowHistory, handleRollback, previewOverride, setPreviewOverride,

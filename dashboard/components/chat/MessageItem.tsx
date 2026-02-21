@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { Sparkles, Zap, Database, Copy, Check, ListChecks, ArrowUpRight, CheckCircle2, XCircle, Cpu, Cloud, Brain, Terminal, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, Zap, Database, Copy, Check, ListChecks, ArrowUpRight, CheckCircle2, XCircle, Cpu, Cloud, Brain, Terminal, ChevronDown, ChevronUp, Palette, Plus, Rocket } from 'lucide-react';
 import Questionnaire from '../Questionnaire';
 import { useLanguage } from '../../../i18n/LanguageContext';
+import { BuilderPhase } from '../../../types';
 
 interface MessageItemProps {
   message: any;
@@ -10,6 +11,7 @@ interface MessageItemProps {
   handleSend: (extraData?: string) => void;
   isLatest?: boolean;
   waitingForApproval?: boolean;
+  phase?: BuilderPhase;
 }
 
 const CommandBlock: React.FC<{ files: Record<string, string> }> = ({ files }) => {
@@ -65,7 +67,7 @@ const CommandBlock: React.FC<{ files: Record<string, string> }> = ({ files }) =>
   );
 };
 
-const MessageItem: React.FC<MessageItemProps> = ({ message: m, index: idx, handleSend, isLatest }) => {
+const MessageItem: React.FC<MessageItemProps> = ({ message: m, index: idx, handleSend, isLatest, phase }) => {
   const { t } = useLanguage();
   const [copiedSql, setCopiedSql] = useState(false);
   const [selectionMade, setSelectionMade] = useState(false);

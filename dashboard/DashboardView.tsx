@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AppMode, BuildStep, ProjectConfig } from '../types';
+import { AppMode, BuildStep, ProjectConfig, BuilderPhase } from '../types';
 import PreviewLayout from './components/PreviewLayout';
 import EditorLayout from './components/EditorLayout';
 import AppConfigView from './components/AppConfigView';
@@ -31,6 +31,7 @@ interface DashboardViewProps {
   projectConfig: ProjectConfig;
   setProjectConfig: (config: ProjectConfig) => void;
   projectId?: string | null;
+  phase: BuilderPhase;
 }
 
 const DashboardView: React.FC<DashboardViewProps> = (props) => {

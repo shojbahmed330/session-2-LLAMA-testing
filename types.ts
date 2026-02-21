@@ -12,6 +12,15 @@ export enum AppMode {
   HELP = 'HELP'
 }
 
+export enum BuilderPhase {
+  EMPTY = 'EMPTY',
+  PROMPT_SENT = 'PROMPT_SENT',
+  QUESTIONING = 'QUESTIONING',
+  BUILDING = 'BUILDING',
+  PREVIEW_READY = 'PREVIEW_READY',
+  ITERATION = 'ITERATION'
+}
+
 export type WorkspaceType = 'app' | 'admin';
 
 export type AIProvider = 'google' | 'ollama';

@@ -3,6 +3,7 @@ import React from 'react';
 import MessageList from './chat/MessageList';
 import ChatInput from './chat/ChatInput';
 import ChatEmptyState from './chat/ChatEmptyState';
+import { BuilderPhase } from '../../types';
 
 interface ChatBoxProps {
   messages: any[];
@@ -18,12 +19,13 @@ interface ChatBoxProps {
   handleImageSelect: (file: File) => void;
   executionQueue: string[];
   waitingForApproval?: boolean;
+  phase: BuilderPhase;
 }
 
 const ChatBox: React.FC<ChatBoxProps> = ({ 
   messages, input, setInput, isGenerating, currentAction, handleSend, handleStop, mobileTab,
   selectedImage, setSelectedImage, handleImageSelect, executionQueue,
-  waitingForApproval
+  waitingForApproval, phase
 }) => {
   return (
     <section className={`w-full lg:w-[500px] xl:w-[560px] border-r border-white/5 flex flex-col bg-[#09090b] h-full relative transition-all duration-700 ${mobileTab === 'preview' ? 'hidden lg:flex' : 'flex'}`}>
@@ -35,6 +37,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
             currentAction={currentAction}
             handleSend={handleSend} 
             waitingForApproval={waitingForApproval}
+            phase={phase}
           />
         ) : (
           <div className="flex-1 overflow-y-auto">
