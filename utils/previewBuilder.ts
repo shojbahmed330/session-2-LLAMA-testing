@@ -46,14 +46,28 @@ export const buildFinalHtml = (projectFiles: Record<string, string>, entryPath: 
     .replace(/<link[^>]+href=["'](?!\w+:\/\/)[^"']+["'][^>]*>/gi, '')
     .replace(/<script[^>]+src=["'](?!\w+:\/\/)[^"']+["'][^>]*><\/script>/gi, '');
 
+  // Filter files based on workspace to prevent conflicts
+  const isAppWorkspace = entryPath.startsWith('app/') || entryPath === 'index.html' || entryPath === 'app.html';
+  const isAdminWorkspace = entryPath.startsWith('admin/') || entryPath === 'admin.html';
+
   const cssContent = Object.entries(projectFiles)
-    .filter(([path, content]) => path.endsWith('.css') && content.length > 0)
+    .filter(([path, content]) => {
+      if (!path.endsWith('.css') || content.length === 0) return false;
+      if (isAppWorkspace && (path.startsWith('admin/') || path.startsWith('admin.'))) return false;
+      if (isAdminWorkspace && (path.startsWith('app/') || path.startsWith('app.'))) return false;
+      return true;
+    })
     .map(([path, content]) => `/* --- FILE: ${path} --- */\n${content}`)
     .join('\n');
     
   // Sort JS files: index/app/main files last to ensure dependencies are loaded
   const jsFiles = Object.entries(projectFiles)
-    .filter(([path, content]) => path.endsWith('.js') && content.length > 0);
+    .filter(([path, content]) => {
+      if (!path.endsWith('.js') || content.length === 0) return false;
+      if (isAppWorkspace && (path.startsWith('admin/') || path.startsWith('admin.'))) return false;
+      if (isAdminWorkspace && (path.startsWith('app/') || path.startsWith('app.'))) return false;
+      return true;
+    });
   
   jsFiles.sort(([a], [b]) => {
      const isMainA = a.includes('index') || a.includes('app') || a.includes('main') || a.includes('script');

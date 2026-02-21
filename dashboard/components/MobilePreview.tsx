@@ -34,9 +34,17 @@ const MobilePreview: React.FC<MobilePreviewProps> = ({
   const { t } = useLanguage();
   
   const intendedPath = workspace === 'app' ? 'app/index.html' : 'admin/index.html';
-  const entryPath = (workspace === 'app' && !projectFiles[intendedPath] && projectFiles['index.html']) 
-    ? 'index.html' 
-    : intendedPath;
+  const entryPath = useMemo(() => {
+    if (workspace === 'app') {
+      if (projectFiles['app/index.html']) return 'app/index.html';
+      if (projectFiles['index.html']) return 'index.html';
+      return 'app/index.html';
+    } else {
+      if (projectFiles['admin/index.html']) return 'admin/index.html';
+      if (projectFiles['admin.html']) return 'admin.html';
+      return 'admin/index.html';
+    }
+  }, [workspace, projectFiles]);
 
   const finalHtml = useMemo(() => buildFinalHtml(projectFiles, entryPath, projectConfig), [projectFiles, entryPath, projectConfig]);
   
@@ -61,9 +69,9 @@ const MobilePreview: React.FC<MobilePreviewProps> = ({
   }, [hasFiles, isGenerating, workspace]);
 
   return (
-    <section className={`flex-1 flex flex-col items-center lg:items-start lg:justify-center lg:pl-40 relative h-full transition-all duration-1000 ${mobileTab === 'chat' ? 'hidden lg:flex' : 'flex'}`}>
+    <section className={`flex-1 flex flex-col items-center ${workspace === 'admin' ? 'lg:items-center lg:px-10' : 'lg:items-start lg:pl-40'} lg:justify-center relative h-full transition-all duration-1000 ${mobileTab === 'chat' ? 'hidden lg:flex' : 'flex'}`}>
       
-      <div className={`w-[320px] mb-8 hidden lg:block transition-all duration-700 z-40 ${isGenerating && isInitialLoad ? 'opacity-0 pointer-events-none -translate-y-6' : 'opacity-100 translate-y-0'}`}>
+      <div className={`w-[320px] mb-8 hidden lg:block transition-all duration-700 z-40 ${workspace === 'admin' ? 'mx-auto' : ''} ${isGenerating && isInitialLoad ? 'opacity-0 pointer-events-none -translate-y-6' : 'opacity-100 translate-y-0'}`}>
         <WorkspaceToggle active={workspace} onChange={setWorkspace} />
       </div>
 
