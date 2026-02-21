@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { FileCode, Clock, Layers, Trash2, Edit3, Box, ShieldCheck, ChevronRight, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileCode, Clock, Layers, Trash2, Edit3, Box, ShieldCheck, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 import { Project } from '../../types';
 
 interface ProjectCardProps {
@@ -13,7 +13,7 @@ interface ProjectCardProps {
   onRenameSubmit: (e: React.FormEvent) => void;
   onRenameChange: (val: string) => void;
   onRenameCancel: () => void;
-  onDelete: (e: React.MouseEvent) => void;
+  onDelete: () => void;
   onLoad: () => void;
   isDeleting: boolean;
 }
@@ -21,58 +21,87 @@ interface ProjectCardProps {
 const ProjectCard: React.FC<ProjectCardProps> = ({
   project, isActive, viewMode, isRenaming, renameValue, onRenameClick, onRenameSubmit, onRenameChange, onRenameCancel, onDelete, onLoad, isDeleting
 }) => {
+  const [showConfirm, setShowConfirm] = useState(false);
   const fileCount = project.files ? Object.keys(project.files).length : 0;
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowConfirm(true);
+  };
+
+  const confirmDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDelete();
+    setShowConfirm(false);
+  };
+
+  const cancelDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowConfirm(false);
+  };
 
   if (viewMode === 'list') {
     return (
-      <div className={`group flex items-center justify-between p-8 rounded-[2rem] bg-slate-900/30 border transition-all ${isActive ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-white/5 hover:bg-slate-900/60 hover:border-cyan-500/20'} ${isDeleting ? 'opacity-30' : ''}`}>
-        <div className="flex items-center gap-10">
-          <div className={`p-5 rounded-2xl ${isActive ? 'bg-cyan-500 text-white shadow-xl' : 'bg-slate-800 text-zinc-500 group-hover:text-cyan-400'}`}>
-            <FileCode size={24}/>
+      <div className={`group flex items-center justify-between p-6 rounded-lg bg-[#0a0a0a] border transition-all ${isActive ? 'border-pink-500/30 bg-pink-500/[0.02]' : 'border-white/5 hover:border-white/10'} ${isDeleting ? 'opacity-30' : ''}`}>
+        <div className="flex items-center gap-8">
+          <div className={`w-12 h-12 rounded-md flex items-center justify-center transition-all ${isActive ? 'bg-pink-600 text-white shadow-lg' : 'bg-zinc-900 text-zinc-600 group-hover:text-pink-500'}`}>
+            <FileCode size={20}/>
           </div>
-          <div className="space-y-2">
-            <h4 className="font-black text-white text-xl group-hover:text-cyan-400 transition-colors tracking-tight">{project.name}</h4>
-            <div className="flex items-center gap-6">
-              <span className="text-[10px] font-black uppercase text-zinc-600 tracking-[0.3em] flex items-center gap-2"><Clock size={14}/> {new Date(project.updated_at).toLocaleDateString()}</span>
-              <span className="text-[10px] font-black uppercase text-zinc-600 tracking-[0.3em] flex items-center gap-2"><Layers size={14}/> {fileCount} Files</span>
+          <div className="space-y-1">
+            <h4 className="font-bold text-white text-lg group-hover:text-pink-400 transition-colors tracking-tight uppercase">{project.name}</h4>
+            <div className="flex items-center gap-4">
+              <span className="text-[9px] font-mono uppercase text-zinc-600 tracking-widest flex items-center gap-1.5"><Clock size={12}/> {new Date(project.updated_at).toLocaleDateString()}</span>
+              <span className="text-[9px] font-mono uppercase text-zinc-600 tracking-widest flex items-center gap-1.5"><Layers size={12}/> {fileCount} Files</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-5">
-          <button 
-            disabled={isDeleting}
-            onClick={onDelete} 
-            className="p-4 bg-red-500/5 text-zinc-800 hover:text-red-500 rounded-xl transition-all opacity-0 group-hover:opacity-100 border border-transparent hover:border-red-500/20"
-          >
-            {isDeleting ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20}/>}
-          </button>
-          <button onClick={onLoad} className={`px-8 py-4 rounded-xl font-black uppercase text-[10px] tracking-[0.3em] transition-all ${isActive ? 'bg-cyan-600 text-white shadow-xl' : 'bg-slate-800 text-zinc-400 hover:text-white hover:bg-cyan-600'}`}>Mount</button>
+        
+        <div className="flex items-center gap-4">
+          {showConfirm ? (
+            <div className="flex items-center gap-2 animate-in slide-in-from-right-2">
+              <span className="text-[9px] font-black uppercase text-red-500 tracking-widest mr-2">Delete?</span>
+              <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded font-black uppercase text-[9px] tracking-widest hover:bg-red-500">Yes</button>
+              <button onClick={cancelDelete} className="px-4 py-2 bg-zinc-800 text-zinc-400 rounded font-black uppercase text-[9px] tracking-widest hover:bg-zinc-700">No</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <button 
+                disabled={isDeleting}
+                onClick={handleDeleteClick} 
+                className="p-3 bg-red-500/10 text-red-500 rounded-md transition-all lg:opacity-0 lg:group-hover:opacity-100 border border-red-500/20 hover:bg-red-600 hover:text-white"
+              >
+                {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16}/>}
+              </button>
+              <button onClick={onLoad} className={`px-6 py-3 rounded-md font-black uppercase text-[9px] tracking-widest transition-all ${isActive ? 'bg-pink-600 text-white shadow-lg' : 'bg-zinc-900 text-zinc-500 hover:text-white hover:bg-pink-600'}`}>
+                {isActive ? 'Active' : 'Mount'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div 
-      className={`group relative p-10 rounded-[3.5rem] bg-slate-900/30 border transition-all duration-700 flex flex-col gap-12 overflow-hidden ${isActive ? 'border-cyan-500/40 ring-1 ring-cyan-500/20 shadow-2xl' : 'border-white/5 hover:border-cyan-500/30 hover:bg-slate-900/60'} ${isDeleting ? 'opacity-30 grayscale' : ''}`}
-    >
-      <div className={`absolute -top-32 -right-32 w-80 h-80 blur-[120px] rounded-full transition-opacity duration-1000 ${isActive ? 'bg-cyan-500/10 opacity-100' : 'bg-cyan-500/5 opacity-0 group-hover:opacity-100'}`}></div>
-      
+    <div className={`group relative p-8 rounded-xl bg-[#0a0a0a] border transition-all duration-500 flex flex-col gap-8 overflow-hidden ${isActive ? 'border-pink-500/40 shadow-[0_0_30px_rgba(236,72,153,0.05)]' : 'border-white/5 hover:border-white/10 hover:bg-[#0c0c0c]'} ${isDeleting ? 'opacity-30 grayscale' : ''}`}>
       <div className="flex items-start justify-between relative z-10">
-        <div className="space-y-6 flex-1">
-          <div className="flex items-center gap-5">
-            <div className={`p-5 rounded-[1.75rem] transition-all ${isActive ? 'bg-cyan-600 text-white shadow-2xl shadow-cyan-900/40' : 'bg-slate-800 text-zinc-500 group-hover:text-cyan-400 group-hover:bg-cyan-500/5'}`}>
-              <Box size={32}/>
+        <div className="space-y-4 flex-1">
+          <div className="flex items-center gap-4">
+            <div className={`w-14 h-14 rounded-lg flex items-center justify-center transition-all ${isActive ? 'bg-pink-600 text-white shadow-xl' : 'bg-zinc-900 text-zinc-600 group-hover:text-pink-500 group-hover:bg-pink-500/5'}`}>
+              <Box size={28}/>
             </div>
             {isActive && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 rounded-full border border-cyan-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></span>
-                <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Live Stub</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-pink-500/10 rounded-md border border-pink-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-pulse"></span>
+                <span className="text-[9px] font-black text-pink-500 uppercase tracking-widest">Active Node</span>
               </div>
             )}
           </div>
           
-          <div className="space-y-3">
+          <div className="space-y-2">
             {isRenaming ? (
               <form onSubmit={onRenameSubmit} className="flex items-center gap-2">
                 <input 
@@ -80,53 +109,65 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
                   value={renameValue} 
                   onChange={e => onRenameChange(e.target.value)} 
                   onBlur={onRenameCancel} 
-                  className="bg-black/60 border border-cyan-500/40 rounded-2xl px-6 py-4 text-sm text-white outline-none w-full font-bold shadow-inner" 
+                  className="bg-black border border-pink-500/40 rounded-lg px-4 py-3 text-sm text-white outline-none w-full font-bold" 
                 />
               </form>
             ) : (
-              <h4 className="text-3xl font-black text-white group-hover:text-cyan-300 transition-colors line-clamp-1 tracking-tighter uppercase">
+              <h4 className="text-2xl font-black text-white group-hover:text-pink-400 transition-colors line-clamp-1 tracking-tighter uppercase leading-tight">
                 {project.name}
               </h4>
             )}
-            <div className="flex items-center gap-4 text-[11px] font-black text-zinc-600 uppercase tracking-[0.3em]">
-              <Clock size={16} className="opacity-40"/> {new Date(project.updated_at).toLocaleDateString()}
+            <div className="flex items-center gap-3 text-[9px] font-mono text-zinc-600 uppercase tracking-widest">
+              <Clock size={12} className="opacity-40"/> {new Date(project.updated_at).toLocaleDateString()}
             </div>
           </div>
         </div>
         
-        <div className="flex flex-col gap-4 opacity-0 group-hover:opacity-100 transition-all transform translate-x-10 group-hover:translate-x-0 duration-500">
-          <button onClick={onRenameClick} className="p-4 bg-slate-800 hover:bg-cyan-600 text-zinc-500 hover:text-white rounded-2xl transition-all border border-white/5 shadow-xl"><Edit3 size={18}/></button>
+        <div className="flex flex-col gap-3 lg:opacity-0 lg:group-hover:opacity-100 transition-all transform lg:translate-x-4 lg:group-hover:translate-x-0 duration-300 relative z-20">
+          <button onClick={onRenameClick} className="p-3 bg-zinc-900 hover:bg-pink-600 text-zinc-600 hover:text-white rounded-lg transition-all border border-white/5"><Edit3 size={16}/></button>
           <button 
             disabled={isDeleting}
-            onClick={onDelete} 
-            className="p-4 bg-red-900/10 hover:bg-red-600 text-zinc-800 hover:text-white rounded-2xl transition-all border border-red-500/10 shadow-xl"
+            onClick={handleDeleteClick} 
+            className="p-3 bg-red-500/10 hover:bg-red-600 text-red-500 hover:text-white rounded-lg transition-all border border-red-500/20"
           >
-            {isDeleting ? <Loader2 size={18} className="animate-spin text-red-500" /> : <Trash2 size={18}/>}
+            {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16}/>}
           </button>
         </div>
       </div>
 
-      <div className="mt-auto space-y-8 relative z-10">
-        <div className="flex items-center justify-between px-2">
-           <div className="flex items-center gap-4">
-              <Layers size={18} className="text-cyan-500/50"/>
-              <span className="text-[11px] font-black uppercase text-zinc-500 tracking-[0.3em]">
-                {fileCount} Production Files
+      {showConfirm && (
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-300">
+           <AlertCircle size={40} className="text-red-500 mb-4"/>
+           <h5 className="text-white font-black uppercase tracking-tighter text-xl mb-2">Delete Project?</h5>
+           <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-6">This action is permanent and cannot be reversed.</p>
+           <div className="flex gap-3 w-full max-w-[200px]">
+              <button onClick={confirmDelete} className="flex-1 py-3 bg-red-600 text-white rounded-lg font-black uppercase text-[10px] tracking-widest hover:bg-red-500 transition-all">Delete</button>
+              <button onClick={cancelDelete} className="flex-1 py-3 bg-zinc-800 text-zinc-400 rounded-lg font-black uppercase text-[10px] tracking-widest hover:bg-zinc-700 transition-all">Cancel</button>
+           </div>
+        </div>
+      )}
+
+      <div className="mt-auto space-y-6 relative z-10">
+        <div className="flex items-center justify-between">
+           <div className="flex items-center gap-3">
+              <Layers size={14} className="text-pink-500/50"/>
+              <span className="text-[9px] font-mono uppercase text-zinc-500 tracking-widest">
+                {fileCount} Files
               </span>
            </div>
-           <div className="text-[11px] font-mono text-zinc-800">#{project.id.slice(0, 6)}</div>
+           <div className="text-[9px] font-mono text-zinc-800">ID: {project.id.slice(0, 8)}</div>
         </div>
         
-        <div className="h-3 w-full bg-black/60 rounded-full overflow-hidden shadow-inner border border-white/5">
-          <div className={`h-full transition-all duration-[2s] rounded-full ${isActive ? 'bg-cyan-500 w-full shadow-[0_0_20px_#06b6d4]' : 'bg-zinc-800 w-[60%]'}`}></div>
+        <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+          <div className={`h-full transition-all duration-[2s] ${isActive ? 'bg-pink-600 w-full shadow-[0_0_10px_#ec4899]' : 'bg-zinc-800 w-[40%]'}`}></div>
         </div>
 
         <button 
           onClick={onLoad}
-          className={`w-full py-6 rounded-[2.5rem] text-[11px] font-black uppercase tracking-[0.5em] transition-all flex items-center justify-center gap-4 group/btn shadow-2xl ${isActive ? 'bg-cyan-600 text-white shadow-cyan-950/40' : 'bg-slate-800 text-zinc-500 hover:text-white hover:bg-cyan-600'}`}
+          className={`w-full py-4 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 group/btn ${isActive ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/20' : 'bg-zinc-900 text-zinc-500 hover:text-white hover:bg-pink-600'}`}
         >
-          {isActive ? <ShieldCheck size={22}/> : <ChevronRight size={22} className="group-hover/btn:translate-x-2 transition-transform"/>}
-          {isActive ? 'CURRENTLY ACTIVE' : 'INITIALIZE STUDIO'}
+          {isActive ? <ShieldCheck size={18}/> : <ChevronRight size={18} className="group-hover/btn:translate-x-1 transition-transform"/>}
+          {isActive ? 'Active' : 'Initialize'}
         </button>
       </div>
     </div>

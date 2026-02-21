@@ -26,9 +26,23 @@ export const projectService = {
   },
 
   async deleteProject(userId: string, projectId: string) {
-    const { data, error } = await supabase.from('projects').delete().eq('id', projectId).eq('user_id', userId);
-    if (error) throw error;
-    return data;
+    // Attempt to delete history, but don't let it block project deletion if it fails
+    try {
+      await supabase.from('project_history').delete().eq('project_id', projectId);
+    } catch (e) {
+      console.warn("Could not clear project history:", e);
+    }
+    
+    const { error } = await supabase.from('projects')
+      .delete()
+      .eq('id', projectId)
+      .eq('user_id', userId);
+      
+    if (error) {
+      console.error("Project delete error:", error);
+      throw new Error(error.message || "Failed to delete project from cloud.");
+    }
+    return true;
   },
 
   async saveProject(userId: string, name: string, files: Record<string, string>, config?: ProjectConfig) {
