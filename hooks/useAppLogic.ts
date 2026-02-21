@@ -257,6 +257,13 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
         const firstFile = Object.keys(res.files)[0];
         if (firstFile) openFile(firstFile);
         addToast("Files implemented successfully!", "success");
+
+        // Create a snapshot for history
+        if (currentProjectId) {
+          db.createProjectSnapshot(currentProjectId, updatedFiles, res.answer.slice(0, 100))
+            .then(() => refreshHistory())
+            .catch(e => console.error("Snapshot failed:", e));
+        }
       }
 
       let nextPlan = res.plan || [];
@@ -368,6 +375,47 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
     }
   };
 
+  const refreshHistory = useCallback(async () => {
+    if (!currentProjectId) return;
+    setIsHistoryLoading(true);
+    try {
+      const data = await db.getProjectHistory(currentProjectId);
+      setHistory(data);
+    } catch (e: any) {
+      addToast("Failed to load history: " + e.message, "error");
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  }, [currentProjectId, db, addToast]);
+
+  const handleDeleteSnapshot = async (id: string) => {
+    try {
+      await db.deleteProjectSnapshot(id);
+      setHistory(prev => prev.filter(h => h.id !== id));
+      addToast("Snapshot deleted", "success");
+    } catch (e: any) {
+      addToast("Delete failed: " + e.message, "error");
+    }
+  };
+
+  const handleRollback = async (files: Record<string, string>, message: string) => {
+    if (!currentProjectId || !user) return;
+    try {
+      setProjectFiles(files);
+      projectFilesRef.current = files;
+      await db.updateProject(user.id, currentProjectId, files, projectConfig);
+      addToast(`Restored to: ${message}`, "success");
+      setPreviewOverride(null);
+      setShowHistory(false);
+    } catch (e: any) {
+      addToast("Rollback failed: " + e.message, "error");
+    }
+  };
+
+  useEffect(() => {
+    if (showHistory) refreshHistory();
+  }, [showHistory, refreshHistory]);
+
   const loadProject = (project: Project) => {
     setCurrentProjectId(project.id);
     localStorage.setItem('active_project_id', project.id);
@@ -377,6 +425,7 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
     setProjectConfig(project.config || { appName: 'OneClickApp', packageName: 'com.oneclick.studio', selected_model: 'gemini-3-flash-preview' });
     const keys = Object.keys(project.files || {});
     if (keys.length > 0) { setSelectedFile(keys[0]); setOpenTabs([keys[0]]); }
+    refreshHistory();
   };
 
   return {
@@ -388,10 +437,10 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
     lastThought, currentPlan,
     buildStatus, setBuildStatus, buildSteps, isDownloading, selectedImage,
     setSelectedImage, handleImageSelect, history, isHistoryLoading, showHistory,
-    setShowHistory, handleRollback: async () => {}, previewOverride, setPreviewOverride,
+    setShowHistory, handleRollback, previewOverride, setPreviewOverride,
     githubConfig, setGithubConfig, handleSend, handleStop, handleBuildAPK,
     handleSecureDownload, loadProject, addFile, deleteFile, renameFile, 
     openFile, closeFile, waitingForApproval,
-    refreshHistory: async () => {}, handleDeleteSnapshot: async () => {}
+    refreshHistory, handleDeleteSnapshot
   };
 };
