@@ -13,7 +13,23 @@ export interface ToastMessage {
 
 export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null) => void) => {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(localStorage.getItem('active_project_id'));
-  const [workspace, setWorkspace] = useState<WorkspaceType>('app');
+  const [workspace, setWorkspaceState] = useState<WorkspaceType>('app');
+  
+  const setWorkspace = (w: WorkspaceType) => {
+    setWorkspaceState(w);
+    // Auto-switch editor to relevant entry point
+    const files = Object.keys(projectFilesRef.current);
+    let target = '';
+    if (w === 'app') {
+      target = files.find(f => f === 'app/index.html' || f === 'index.html' || f === 'app/main.html') || '';
+    } else {
+      target = files.find(f => f === 'admin/index.html' || f === 'admin.html' || f === 'admin/main.html') || '';
+    }
+    if (target && projectFilesRef.current[target]) {
+      setSelectedFile(target);
+      if (!openTabs.includes(target)) setOpenTabs(prev => [...prev, target]);
+    }
+  };
   const [mobileTab, setMobileTab] = useState<'chat' | 'preview'>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -37,6 +53,7 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
   const [lastThought, setLastThought] = useState<string>('');
   const [currentPlan, setCurrentPlan] = useState<string[]>([]);
   const [waitingForApproval, setWaitingForApproval] = useState(false);
+  const autoStepCountRef = useRef(0);
 
   const [buildStatus, setBuildStatus] = useState<{status: string; message: string; apkUrl: string; webUrl: string; runUrl: string}>({ 
     status: 'idle', message: '', apkUrl: '', webUrl: '', runUrl: '' 
@@ -193,6 +210,7 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
       let currentMessages = [...messages];
       
       if (!isAuto) {
+        autoStepCountRef.current = 0; // Reset on manual user input
         const userMsg: ChatMessage = { 
           id: Date.now().toString(), 
           role: 'user', 
@@ -269,8 +287,9 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
         updatedFiles = { ...updatedFiles, ...res.files };
         setProjectFiles(updatedFiles);
         projectFilesRef.current = updatedFiles;
-        const firstFile = Object.keys(res.files)[0];
-        if (firstFile) openFile(firstFile);
+        const fileKeys = Object.keys(res.files);
+        const priorityFile = fileKeys.find(k => k.includes('index.html')) || fileKeys[0];
+        if (priorityFile) openFile(priorityFile);
         addToast("Files implemented successfully!", "success");
 
         // Create a snapshot for history
@@ -314,7 +333,15 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
 
       // Autonomous Execution: If there are more steps in the plan, trigger the next one automatically
       const hasMoreSteps = (isAuto && activeQueue.length > 0) || (!isAuto && nextPlan.length > 1);
+      
       if (hasMoreSteps) {
+        if (autoStepCountRef.current >= 10) {
+          addToast("Autonomous execution limit reached to prevent loops.", "info");
+          setIsGenerating(false);
+          return;
+        }
+
+        autoStepCountRef.current++;
         const nextStepName = isAuto ? activeQueue[0] : nextPlan[1];
         const newQueue = isAuto ? activeQueue.slice(1) : nextPlan.slice(2);
         setExecutionQueue(newQueue);
@@ -345,6 +372,15 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
     setBuildSteps([{ name: 'Source Analysis', status: 'completed', conclusion: 'success' }, { name: 'Cloud Sync', status: 'in_progress', conclusion: null }]);
 
     try {
+      // 1. Ensure Repo & Secrets are synced
+      await github.current.createRepo(githubConfig.token, githubConfig.repo);
+      
+      if (projectConfig.supabase_url && projectConfig.supabase_key) {
+        setBuildStatus(prev => ({ ...prev, message: 'Syncing Database Secrets...' }));
+        await github.current.setRepoSecret(githubConfig, 'SUPABASE_URL', projectConfig.supabase_url);
+        await github.current.setRepoSecret(githubConfig, 'SUPABASE_KEY', projectConfig.supabase_key);
+      }
+
       await github.current.pushToGithub(githubConfig, projectFilesRef.current, projectConfig);
       setBuildSteps(prev => prev.map(s => s.name === 'Cloud Sync' ? { ...s, status: 'completed', conclusion: 'success' } : s).concat([{ name: 'Build Engine Trigger', status: 'in_progress', conclusion: null }]));
       

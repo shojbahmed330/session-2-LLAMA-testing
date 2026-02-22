@@ -35,14 +35,19 @@ const MobilePreview: React.FC<MobilePreviewProps> = ({
   
   const intendedPath = workspace === 'app' ? 'app/index.html' : 'admin/index.html';
   const entryPath = useMemo(() => {
+    const files = Object.keys(projectFiles);
     if (workspace === 'app') {
-      if (projectFiles['app/index.html']) return 'app/index.html';
-      if (projectFiles['index.html']) return 'index.html';
-      return 'app/index.html';
+      return files.find(f => f === 'app/index.html') || 
+             files.find(f => f === 'index.html') || 
+             files.find(f => f === 'app/main.html') ||
+             files.find(f => f.startsWith('app/') && f.endsWith('.html')) ||
+             'app/index.html';
     } else {
-      if (projectFiles['admin/index.html']) return 'admin/index.html';
-      if (projectFiles['admin.html']) return 'admin.html';
-      return 'admin/index.html';
+      return files.find(f => f === 'admin/index.html') || 
+             files.find(f => f === 'admin.html') || 
+             files.find(f => f === 'admin/main.html') ||
+             files.find(f => f.startsWith('admin/') && f.endsWith('.html')) ||
+             'admin/index.html';
     }
   }, [workspace, projectFiles]);
 

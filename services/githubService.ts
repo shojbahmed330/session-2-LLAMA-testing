@@ -3,8 +3,39 @@ import { GithubConfig, ProjectConfig } from "../types";
 import { WORKFLOW_YAML } from "./github/workflow";
 import { toBase64 } from "./github/utils";
 import { buildFinalHtml } from "../utils/previewBuilder";
+import sodium from 'libsodium-wrappers';
 
 export class GithubService {
+  async setRepoSecret(config: GithubConfig, name: string, value: string) {
+    const { token, owner, repo } = config;
+    const headers = { 
+      'Authorization': `token ${token}`, 
+      'Accept': 'application/vnd.github.v3+json' 
+    };
+
+    // 1. Get public key
+    const keyRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/secrets/public-key`, { headers });
+    if (!keyRes.ok) throw new Error("Failed to get GitHub public key.");
+    const { key_id, key } = await keyRes.json();
+
+    // 2. Encrypt the secret
+    await sodium.ready;
+    const binKey = sodium.from_base64(key, sodium.base64_variants.ORIGINAL);
+    const binSec = sodium.from_string(value);
+    const encSec = sodium.crypto_box_seal(binSec, binKey);
+    const output = sodium.to_base64(encSec, sodium.base64_variants.ORIGINAL);
+
+    // 3. Update secret
+    await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/secrets/${name}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        encrypted_value: output,
+        key_id: key_id
+      })
+    });
+  }
+
   async createRepo(token: string, repoName: string): Promise<string> {
     const headers = { 
       'Authorization': `token ${token}`, 

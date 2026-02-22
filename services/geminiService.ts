@@ -19,8 +19,9 @@ Your goal is to build 100% COMPLETE, functional, and production-ready MOBILE APP
 3. **AUTONOMOUS EXECUTION:**
    - Plan and implement both interfaces and the database schema autonomously.
    - Do NOT ask for permission between steps. Execute the full multi-step plan until both apps are functional.
-4. **SELF-CORRECTION:**
-   - Analyze and fix any logic or UI errors autonomously during the build process.
+4. **DATABASE INTEGRATION:**
+   - Always provide a "database.sql" file containing the full schema.
+   - **CRITICAL:** Use Supabase ONLY when the application requires a database for data persistence or management. If Supabase credentials (URL and Key) are provided in the context AND the app needs a database, you MUST use them in the generated code for both the Mobile App and the Web Admin Dashboard. Do NOT use placeholders or hardcoded example keys if real ones are available.
 5. **LANGUAGE ADAPTABILITY:**
    - Respond and explain in the SAME LANGUAGE used by the user.
 
@@ -66,7 +67,7 @@ export class GeminiService {
     modelName: string = 'gemini-3-flash-preview'
   ): Promise<GenerationResult> {
     
-    const contextText = this.buildContextString(prompt, currentFiles, activeWorkspace);
+    const contextText = this.buildContextString(prompt, currentFiles, activeWorkspace, { appName: 'App', packageName: 'com.app' });
 
     if (this.isLocalModel(modelName)) {
       return this.generateWithOllama(modelName, contextText, history);
@@ -102,7 +103,7 @@ export class GeminiService {
     
     if (signal?.aborted) throw new Error("AbortError");
 
-    const contextText = this.buildContextString(prompt, currentFiles, activeWorkspace);
+    const contextText = this.buildContextString(prompt, currentFiles, activeWorkspace, projectConfig);
 
     if (this.isLocalModel(modelName)) {
       yield* this.streamWithOllama(modelName, contextText, history, signal);
@@ -128,7 +129,7 @@ export class GeminiService {
     }
   }
 
-  private buildContextString(prompt: string, currentFiles: Record<string, string>, activeWorkspace?: WorkspaceType | boolean): string {
+  private buildContextString(prompt: string, currentFiles: Record<string, string>, activeWorkspace?: WorkspaceType | boolean, projectConfig?: any): string {
     const filteredFiles: Record<string, string> = {};
     const fullProjectMap: string[] = Object.keys(currentFiles);
 
@@ -142,7 +143,15 @@ export class GeminiService {
       }
     });
 
-    return `PROJECT MAP (FILES IN WORKSPACE):\n${fullProjectMap.join('\n')}\n\nCURRENT SOURCE CONTENT:\n${JSON.stringify(filteredFiles)}\n\nUSER DIRECTIVE: ${prompt}\n\nINSTRUCTION: Admin panel is optional. Use "questions" to ask if one is needed for simple apps.`;
+    let configContext = '';
+    if (projectConfig) {
+      configContext = `\n\nPROJECT CONFIGURATION:\n- App Name: ${projectConfig.appName}\n- Package Name: ${projectConfig.packageName}`;
+      if (projectConfig.supabase_url && projectConfig.supabase_key) {
+        configContext += `\n- Supabase URL: ${projectConfig.supabase_url}\n- Supabase Key: ${projectConfig.supabase_key}`;
+      }
+    }
+
+    return `PROJECT MAP (FILES IN WORKSPACE):\n${fullProjectMap.join('\n')}\n\nCURRENT SOURCE CONTENT:\n${JSON.stringify(filteredFiles)}\n\nUSER DIRECTIVE: ${prompt}${configContext}\n\nINSTRUCTION: Admin panel is optional. Use "questions" to ask if one is needed for simple apps.`;
   }
 
   private async generateWithOllama(model: string, prompt: string, history: ChatMessage[], signal?: AbortSignal): Promise<GenerationResult> {
