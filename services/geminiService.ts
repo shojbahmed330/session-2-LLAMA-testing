@@ -80,14 +80,21 @@ export class GeminiService {
     const parts: any[] = [{ text: contextText }];
     if (image) parts.push({ inlineData: { data: image.data, mimeType: image.mimeType } });
 
-    const response = await ai.models.generateContent({
-      model: modelName.includes('pro') ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview', 
-      contents: { parts },
-      config: { systemInstruction: SYSTEM_PROMPT, responseMimeType: "application/json", temperature: 0.1 }
-    });
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName.includes('pro') ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview', 
+        contents: { parts },
+        config: { systemInstruction: SYSTEM_PROMPT, responseMimeType: "application/json", temperature: 0.1 }
+      });
 
-    if (!response.text) throw new Error("AI returned empty response");
-    return JSON.parse(response.text.trim());
+      if (!response.text) throw new Error("AI returned empty response");
+      return JSON.parse(response.text.trim());
+    } catch (err: any) {
+      if (err.message?.includes('fetch')) {
+        throw new Error("Cloud AI Connection Failed: Please check your internet connection.");
+      }
+      throw err;
+    }
   }
 
   async *generateWebsiteStream(
@@ -117,15 +124,22 @@ export class GeminiService {
     const parts: any[] = [{ text: contextText }];
     if (image) parts.push({ inlineData: { data: image.data, mimeType: image.mimeType } });
 
-    const responseStream = await ai.models.generateContentStream({
-      model: modelName.includes('pro') ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview', 
-      contents: { parts },
-      config: { systemInstruction: SYSTEM_PROMPT, responseMimeType: "application/json", temperature: 0.1 }
-    });
+    try {
+      const responseStream = await ai.models.generateContentStream({
+        model: modelName.includes('pro') ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview', 
+        contents: { parts },
+        config: { systemInstruction: SYSTEM_PROMPT, responseMimeType: "application/json", temperature: 0.1 }
+      });
 
-    for await (const chunk of responseStream) {
-      if (signal?.aborted) throw new Error("AbortError");
-      if (chunk.text) yield chunk.text;
+      for await (const chunk of responseStream) {
+        if (signal?.aborted) throw new Error("AbortError");
+        if (chunk.text) yield chunk.text;
+      }
+    } catch (err: any) {
+      if (err.message?.includes('fetch')) {
+        throw new Error("Cloud AI Connection Failed: Please check your internet connection.");
+      }
+      throw err;
     }
   }
 
@@ -155,44 +169,55 @@ export class GeminiService {
   }
 
   private async generateWithOllama(model: string, prompt: string, history: ChatMessage[], signal?: AbortSignal): Promise<GenerationResult> {
-    const response = await fetch('http://localhost:11434/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...history.map(m => ({ role: m.role, content: m.content })),
-          { role: 'user', content: prompt }
-        ],
-        stream: false,
-        format: 'json'
-      }),
-      signal
-    });
-    if (!response.ok) throw new Error("Ollama connection failed.");
+    let response;
+    try {
+      response = await fetch('http://localhost:11434/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...history.map(m => ({ role: m.role, content: m.content })),
+            { role: 'user', content: prompt }
+          ],
+          stream: false,
+          format: 'json'
+        }),
+        signal
+      });
+    } catch (err: any) {
+      throw new Error("Ollama Connection Failed: Ensure Ollama is running and OLLAMA_ORIGINS=\"*\" is set.");
+    }
+
+    if (!response.ok) throw new Error(`Ollama Error: ${response.statusText}`);
     const data = await response.json();
     return JSON.parse(data.message.content);
   }
 
   private async *streamWithOllama(model: string, prompt: string, history: ChatMessage[], signal?: AbortSignal): AsyncIterable<string> {
-    const response = await fetch('http://localhost:11434/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...history.map(m => ({ role: m.role, content: m.content })),
-          { role: 'user', content: prompt }
-        ],
-        stream: true,
-        format: 'json'
-      }),
-      signal
-    });
+    let response;
+    try {
+      response = await fetch('http://localhost:11434/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...history.map(m => ({ role: m.role, content: m.content })),
+            { role: 'user', content: prompt }
+          ],
+          stream: true,
+          format: 'json'
+        }),
+        signal
+      });
+    } catch (err: any) {
+      throw new Error("Ollama Connection Failed: Ensure Ollama is running and OLLAMA_ORIGINS=\"*\" is set.");
+    }
 
-    if (!response.ok) throw new Error("Ollama connection failed.");
+    if (!response.ok) throw new Error(`Ollama Error: ${response.statusText}`);
     
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
