@@ -48,6 +48,7 @@ const AppConfigView: React.FC<AppConfigViewProps> = ({ config, onUpdate, onBack 
     { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (Cloud)' },
     { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (Cloud)' },
     { id: 'qwen3-coder:480b-cloud', name: 'Qwen3 Coder 480B (Local)' },
+    { id: 'codellama:7b-instruct-q4_0', name: 'CodeLlama 7B (Local)' },
     { id: 'llama3-local', name: 'Llama 3 (Local)' }
   ];
 
