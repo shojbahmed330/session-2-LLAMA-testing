@@ -73,7 +73,7 @@ export class GeminiService {
       return this.generateWithOllama(modelName, contextText, history);
     }
 
-    const key = process.env.GEMINI_API_KEY;
+    const key = process.env.GEMINI_API_KEY || process.env.API_KEY;
     if (!key || key === "undefined") throw new Error("GEMINI_API_KEY not found.");
 
     const ai = new GoogleGenAI({ apiKey: key });
@@ -117,7 +117,7 @@ export class GeminiService {
       return;
     }
 
-    const key = process.env.GEMINI_API_KEY;
+    const key = process.env.GEMINI_API_KEY || process.env.API_KEY;
     if (!key || key === "undefined") throw new Error("GEMINI_API_KEY not found.");
 
     const ai = new GoogleGenAI({ apiKey: key });

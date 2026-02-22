@@ -125,7 +125,7 @@ const AppConfigView: React.FC<AppConfigViewProps> = ({ config, onUpdate, onBack 
                     </div>
                     <div className="flex gap-4">
                        <div className="w-6 h-6 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">৩</div>
-                       <p>Ollama বন্ধ করে CMD-তে <code className="text-blue-400">set OLLAMA_ORIGINS=*</code> লিখে তারপর আবার Ollama চালু করুন।</p>
+                       <p>Ollama বন্ধ করে CMD-তে <code className="text-blue-400">set OLLAMA_ORIGINS=*</code> লিখে তারপর আবার Ollama চালু করুন (এটি CORS সমস্যা সমাধান করে)।</p>
                     </div>
                  </div>
               </div>
