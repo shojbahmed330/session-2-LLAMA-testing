@@ -38,13 +38,6 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isGenerating, curre
     return <Cpu size={16} className="animate-spin text-pink-500" />;
   };
 
-  const buildSteps = [
-    { id: 'layout', label: 'Creating layout', icon: <Layout size={12} /> },
-    { id: 'pages', label: 'Adding pages', icon: <Layers size={12} /> },
-    { id: 'styling', label: 'Styling', icon: <Palette size={12} /> },
-    { id: 'sections', label: 'Adding sections', icon: <Type size={12} /> },
-  ];
-
   return (
     <div 
       ref={scrollRef}
@@ -69,45 +62,24 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isGenerating, curre
                  <div className="h-full bg-pink-500 w-[40%] animate-[loading-bar_2s_infinite]"></div>
               </div>
               
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-4">
                  <div className="w-10 h-10 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-500">
                     {getActionIcon()}
                  </div>
                  <div className="flex flex-col flex-1">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-500/80">
-                      {phase === BuilderPhase.BUILDING ? 'Building Site' : 'Core'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-500/80">
+                        {phase === BuilderPhase.BUILDING ? 'Building Site' : 'Neural Core'}
+                      </span>
+                      <span className="text-[7px] font-black uppercase text-zinc-600 tracking-[0.1em]">
+                        Google Cloud (Gemini)
+                      </span>
+                    </div>
                     <span className="text-[11px] font-bold text-white mt-0.5 animate-pulse">
                        {currentAction || 'Processing...'}
                     </span>
                  </div>
               </div>
-
-              {phase === BuilderPhase.BUILDING ? (
-                <div className="space-y-3 border-t border-white/5 pt-4">
-                  {buildSteps.map((step, i) => (
-                    <div key={step.id} className="flex items-center justify-between animate-in fade-in slide-in-from-left-2" style={{ animationDelay: `${i * 150}ms` }}>
-                      <div className="flex items-center gap-3">
-                        <div className="w-4 h-4 rounded-md bg-white/5 flex items-center justify-center text-zinc-500">
-                          {step.icon}
-                        </div>
-                        <span className="text-[10px] font-bold text-zinc-400">{step.label}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                        <span className="text-[8px] font-black uppercase text-emerald-500/60 tracking-widest">Active</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2 border-t border-white/5 pt-4">
-                   <div className="flex items-center gap-3">
-                      <div className="w-1 h-1 rounded-full bg-pink-500"></div>
-                      <span className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Injecting Neural Logic</span>
-                   </div>
-                </div>
-              )}
            </div>
         </div>
       )}

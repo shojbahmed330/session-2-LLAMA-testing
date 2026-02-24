@@ -25,7 +25,7 @@ const EditorTabs: React.FC<EditorTabsProps> = ({ tabs, activeTab, onSelect, onCl
 
   return (
     <div className="flex bg-[#09090b] border-b border-white/5 overflow-x-auto no-scrollbar scroll-smooth w-full flex-nowrap shrink-0">
-      {tabs.map(tab => {
+      {(Array.from(new Set(tabs)) as string[]).map(tab => {
         const isActive = activeTab === tab;
         const fileName = tab.split('/').pop() || tab;
         

@@ -102,22 +102,6 @@ const MessageItem: React.FC<MessageItemProps> = ({ message: m, index: idx, handl
       style={{ animationDelay: `${idx * 50}ms` }}
     >
       <div className="flex flex-col items-start w-full max-w-full">
-        {m.role === 'assistant' && (
-          <div className="flex items-center gap-3 mb-3 ml-2">
-            <div className={`w-6 h-6 rounded-lg border flex items-center justify-center ${isLocal ? 'bg-amber-500/10 border-amber-500/30' : 'bg-pink-500/10 border-pink-500/30'}`}>
-              {isLocal ? <Cpu size={12} className="text-amber-500"/> : <Sparkles size={12} className="text-pink-500"/>}
-            </div>
-            <div className="flex flex-col">
-              <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${isLocal ? 'text-amber-500' : 'text-pink-500'}`}>
-                {isLocal ? 'Neural Local Agent' : 'Neural Cloud Agent'}
-              </span>
-              <span className="text-[7px] font-black uppercase text-zinc-600 tracking-[0.1em] flex items-center gap-1">
-                {isLocal ? <><Cpu size={8}/> Local Host ({m.model?.split(':')[0] || 'Ollama'})</> : <><Cloud size={8}/> Google Cloud (Gemini)</>}
-              </span>
-            </div>
-          </div>
-        )}
-        
         <div className="w-full">
           {m.role === 'assistant' && m.thought && (
             <div className="mb-4 ml-2 animate-in fade-in slide-in-from-top-2 duration-700">

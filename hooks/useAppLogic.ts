@@ -27,7 +27,7 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
     }
     if (target && projectFilesRef.current[target]) {
       setSelectedFile(target);
-      if (!openTabs.includes(target)) setOpenTabs(prev => [...prev, target]);
+      setOpenTabs(prev => prev.includes(target) ? prev : [...prev, target]);
     }
   };
   const [mobileTab, setMobileTab] = useState<'chat' | 'preview'>('chat');
@@ -133,9 +133,7 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
 
   const openFile = (path: string) => {
     setSelectedFile(path);
-    if (!openTabs.includes(path)) {
-      setOpenTabs(prev => [...prev, path]);
-    }
+    setOpenTabs(prev => prev.includes(path) ? prev : [...prev, path]);
   };
 
   const closeFile = (path: string, e?: React.MouseEvent) => {
@@ -169,7 +167,10 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
     delete newFiles[oldPath];
     newFiles[newPath] = content;
     setProjectFiles(newFiles);
-    setOpenTabs(prev => prev.map(t => t === oldPath ? newPath : t));
+    setOpenTabs(prev => {
+      const updated = prev.map(t => t === oldPath ? newPath : t);
+      return Array.from(new Set(updated));
+    });
     if (selectedFile === oldPath) setSelectedFile(newPath);
   };
 
@@ -207,7 +208,6 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
     
     try {
       const currentImage = selectedImage ? { data: selectedImage.data, mimeType: selectedImage.mimeType } : undefined;
-      let currentMessages = [...messages];
       
       if (!isAuto) {
         autoStepCountRef.current = 0; // Reset on manual user input
@@ -218,8 +218,7 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
           image: selectedImage?.preview, 
           timestamp: Date.now() 
         };
-        currentMessages.push(userMsg);
-        setMessages(currentMessages);
+        setMessages(prev => [...prev, userMsg]);
         setInput('');
         setSelectedImage(null);
       }
@@ -230,10 +229,24 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
       let fullJsonString = '';
       let streamedAnswer = '';
       
+      // Capture current state of files for the stream
+      const currentFiles = { ...projectFilesRef.current };
+      // Capture current messages for the stream (including the one we just added if not auto)
+      let messagesForStream = [...messages];
+      if (!isAuto) {
+        messagesForStream.push({ 
+          id: Date.now().toString(), 
+          role: 'user', 
+          content: promptText, 
+          image: selectedImage?.preview, 
+          timestamp: Date.now() 
+        });
+      }
+
       const stream = gemini.current.generateWebsiteStream(
         promptText, 
-        projectFilesRef.current, 
-        currentMessages, 
+        currentFiles, 
+        messagesForStream, 
         currentImage, 
         projectConfig, 
         workspace,
@@ -311,24 +324,32 @@ export const useAppLogic = (user: UserType | null, setUser: (u: UserType | null)
         setExecutionQueue(nextPlan.slice(1));
       }
 
-      const isFirstTurn = currentMessages.length === 0;
-      let finalAssistantResponse = res.answer;
-
       // Filter out invalid questions
       const validQuestions = (res.questions || []).filter((q: any) => q && q.text && q.options && q.options.length > 0);
 
       const finalAssistantMsg: ChatMessage = { 
-        id: assistantId, role: 'assistant', content: finalAssistantResponse, 
+        id: assistantId, role: 'assistant', content: res.answer, 
         plan: isAuto ? currentPlan : (res.plan || []), questions: validQuestions,
         isApproval: false, model: currentModel, files: res.files, thought: res.thought, timestamp: Date.now()
       };
 
-      const finalMessages = [...currentMessages, finalAssistantMsg];
-      setMessages(finalMessages);
+      setMessages(prev => {
+        // Find the assistant message we were streaming and update it with final data
+        const updated = prev.map(m => m.id === assistantId ? finalAssistantMsg : m);
+        // If for some reason it's not there, add it (shouldn't happen)
+        if (!updated.find(m => m.id === assistantId)) {
+          return [...updated, finalAssistantMsg];
+        }
+        return updated;
+      });
 
       if (currentProjectId && user) {
         await db.updateProject(user.id, currentProjectId, updatedFiles, projectConfig);
-        await db.supabase.from('projects').update({ messages: finalMessages }).eq('id', currentProjectId);
+        // We need the latest messages to save to DB
+        setMessages(current => {
+          db.supabase.from('projects').update({ messages: current }).eq('id', currentProjectId);
+          return current;
+        });
       }
 
       // Autonomous Execution: If there are more steps in the plan, trigger the next one automatically
