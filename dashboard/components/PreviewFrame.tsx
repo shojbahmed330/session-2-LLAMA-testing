@@ -17,7 +17,7 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ workspace, children, appNam
     <div className={`relative transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${
       isApp 
         ? 'w-full lg:w-[320px] h-full lg:h-[640px] shrink-0' 
-        : 'w-full max-w-full md:max-w-[1400px] h-full lg:h-[750px]'
+        : 'w-full h-full lg:h-[calc(100%-2rem)]'
     }`}>
       
       {/* GLOW BACKGROUND EFFECT */}
@@ -27,7 +27,7 @@ const PreviewFrame: React.FC<PreviewFrameProps> = ({ workspace, children, appNam
       <div className={`w-full h-full bg-black shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] flex flex-col relative overflow-hidden transition-all duration-1000 ${
         isApp 
           ? 'lg:rounded-[3.5rem] lg:border-[12px] lg:border-[#18181b] lg:ring-1 lg:ring-white/10' 
-          : 'lg:rounded-[1.5rem] lg:border-[12px] lg:border-zinc-800 lg:ring-1 lg:ring-white/5 lg:shadow-2xl'
+          : 'lg:rounded-xl lg:border lg:border-white/10 lg:ring-1 lg:ring-white/5 lg:shadow-2xl'
       }`}>
         
         {/* TOP BAR / BEZEL (Desktop only) */}
